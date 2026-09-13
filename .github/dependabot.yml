@@ -10,6 +10,13 @@ updates:
       dev-tooling:
         dependency-type: development
         update-types: [minor, patch]
+    ignore:
+      # TypeScript 7 (the native port) is outside typescript-eslint's supported peer range.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # Node types track the runtime pinned in .nvmrc.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:

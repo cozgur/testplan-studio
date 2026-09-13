@@ -1,0 +1,105 @@
+name: run-generated-spec
+
+# Executes a Playwright spec produced by TestPlan Studio against an allowlisted target.
+# Triggered from the studio UI (workflow_dispatch via the REST API) or the gh CLI.
+# Only users with write access to this repository can dispatch it.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Allowlisted target the spec runs against
+        required: true
+        type: choice
+        options: [lab, todomvc, saucedemo, the-internet]
+      spec_file_name:
+        description: Kebab-case file name ending in .spec.ts
+        required: true
+        default: generated.spec.ts
+        type: string
+      spec_b64:
+        description: Base64-encoded Playwright spec (UTF-8)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: Run spec against ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Validate inputs and materialise the spec
+        env:
+          SPEC_FILE_NAME: ${{ inputs.spec_file_name }}
+          SPEC_B64: ${{ inputs.spec_b64 }}
+        run: |
+          if [[ ! "$SPEC_FILE_NAME" =~ ^[a-z0-9]+(-[a-z0-9]+)*\.spec\.ts$ ]]; then
+            echo "::error::spec_file_name must be kebab-case and end in .spec.ts"; exit 1
+          fi
+          mkdir -p runner/generated
+          printf '%s' "$SPEC_B64" | base64 -d > "runner/generated/$SPEC_FILE_NAME"
+          {
+            echo "### Spec under test: \`$SPEC_FILE_NAME\` → target \`${{ inputs.target }}\`"
+            echo
+            echo '```ts'
+            cat "runner/generated/$SPEC_FILE_NAME"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Resolve the allowlisted base URL
+        id: target
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          case "$TARGET" in
+            lab)          echo "base_url=http://127.0.0.1:3000" ;;
+            todomvc)      echo "base_url=https://demo.playwright.dev/todomvc" ;;
+            saucedemo)    echo "base_url=https://www.saucedemo.com" ;;
+            the-internet) echo "base_url=https://the-internet.herokuapp.com" ;;
+            *) echo "::error::target is not allowlisted"; exit 1 ;;
+          esac >> "$GITHUB_OUTPUT"
+
+      - name: Check out the lab (lab target only)
+        if: inputs.target == 'lab'
+        uses: actions/checkout@v7
+        with:
+          repository: cozgur/modern-quality-engineering-lab
+          path: lab
+
+      - name: Boot the lab (lab target only)
+        if: inputs.target == 'lab'
+        working-directory: lab
+        run: |
+          npm ci
+          npm run dev > ../lab.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3000/api/health && exit 0
+            sleep 1
+          done
+          echo "::error::lab did not become healthy"; cat ../lab.log; exit 1
+
+      - name: Run the generated spec
+        env:
+          BASE_URL: ${{ steps.target.outputs.base_url }}
+        run: npx playwright test -c runner/playwright.config.ts
+
+      - name: Upload report and traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: generated-spec-report
+          path: |
+            runner/report/
+            runner/test-results/
+          if-no-files-found: ignore
+          retention-days: 14

@@ -39,7 +39,7 @@ ring and the only motion is the 2px progress sweep, which `prefers-reduced-motio
 
 - **Trust boundary is obvious.** The API key and the GitHub token are typed into the page, held in
   memory, and sent only to the two vendor APIs. There is no server that could log them.
-- **Hosting is free and reviewable.** GitHub Pages serves the build; GitHub Actions is the runner.
+- **Hosting is free and reviewable.** GitHub Pages serves the build at studio.ozgurcetintas.dev; GitHub Actions is the runner.
 - **Cost stays with the person generating.** Bring-your-own-key means no shared quota to abuse.
 
 The trade-off is that the browser cannot run Playwright itself. That is what the

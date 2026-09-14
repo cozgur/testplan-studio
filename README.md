@@ -6,7 +6,7 @@
 ![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Playwright](https://img.shields.io/badge/Playwright-1.63-2EAD33?logo=playwright&logoColor=white)
 
-**Live:** <https://cozgur.github.io/testplan-studio/>
+**Live:** <https://studio.ozgurcetintas.dev/>
 
 Describe an application or pick a demo target. Claude drafts a **risk-based test plan** with every
 scenario placed at the right test layer. Turn the browser scenarios into a **Playwright spec**, pass

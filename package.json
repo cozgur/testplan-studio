@@ -18,7 +18,7 @@
     "type": "git",
     "url": "https://github.com/cozgur/testplan-studio.git"
   },
-  "homepage": "https://cozgur.github.io/testplan-studio/",
+  "homepage": "https://studio.ozgurcetintas.dev/",
   "type": "module",
   "engines": {
     "node": ">=22"

@@ -47,6 +47,7 @@ describe('studio state', () => {
     const cancelled = reducer(busy, { type: 'cancel' });
     expect(cancelled.busy).toBeNull();
     expect(cancelled.error).toBeNull();
+    expect(reducer(cancelled, { type: 'reset' })).toEqual(initialState);
   });
 
   test('toggleScenario adds and removes ids', () => {

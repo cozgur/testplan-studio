@@ -52,6 +52,7 @@ export type Action =
   | { type: 'specReady'; spec: GeneratedSpec }
   | { type: 'fail'; message: string }
   | { type: 'cancel' }
+  | { type: 'reset' }
   | { type: 'dismissError' }
   | { type: 'run'; run: RunState };
 
@@ -138,6 +139,8 @@ export function reducer(state: State, action: Action): State {
       return { ...state, busy: null, error: action.message };
     case 'cancel':
       return { ...state, busy: null };
+    case 'reset':
+      return initialState;
     case 'dismissError':
       return { ...state, error: null };
     case 'run':

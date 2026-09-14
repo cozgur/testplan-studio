@@ -1,4 +1,4 @@
-import { useReducer, useRef } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import type { Brief } from './domain/brief.js';
 import type { DispatchConfig } from './github/dispatch.js';
 import type { Step } from './state.js';
@@ -7,6 +7,7 @@ import { findTarget } from './domain/targets.js';
 import { SAMPLE_PLAN } from './fixtures/sample-plan.js';
 import { SAMPLE_SPEC } from './fixtures/sample-spec.js';
 import { dispatchSpecRun, GitHubError, waitForRun } from './github/dispatch.js';
+import { clearSession, loadSession, saveSession } from './persistence.js';
 import { initialState, reducer, STEPS } from './state.js';
 import { BriefForm } from './ui/BriefForm.js';
 import { Alert } from './ui/Feedback.js';
@@ -30,7 +31,18 @@ const loadLlm = async () => {
 type Llm = Awaited<ReturnType<typeof loadLlm>>;
 
 export function App() {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, initialState, (init) => ({ ...init, ...loadSession() }));
+
+  // Persist artefacts between reloads; skipped mid-generation so streaming does not thrash storage.
+  useEffect(() => {
+    if (!state.busy) saveSession(state);
+  }, [state]);
+
+  const onReset = () => {
+    abortRef.current?.abort();
+    clearSession();
+    dispatch({ type: 'reset' });
+  };
   const abortRef = useRef<AbortController | null>(null);
   const target = findTarget(state.brief.targetId);
   const hasKey = state.apiKey.trim().length > 0;
@@ -131,7 +143,7 @@ export function App() {
 
   return (
     <>
-      <TopBar stepIndex={stepIndex} stepCount={STEPS.length} />
+      <TopBar stepIndex={stepIndex} stepCount={STEPS.length} onReset={onReset} />
       <div className="layout">
         <Stepper state={state} onSelect={(step: Step) => dispatch({ type: 'setStep', step })} />
         <main className="main">

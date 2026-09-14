@@ -10,7 +10,7 @@ export default defineConfig({
     setupFiles: ['tests/setup.ts'],
     coverage: {
       provider: 'v8',
-      include: ['src/domain/**', 'src/github/**', 'src/llm/**'],
+      include: ['src/domain/**', 'src/github/**', 'src/llm/**', 'src/persistence.ts'],
       exclude: ['src/llm/anthropic-client.ts'],
       reporter: ['text', 'lcov'],
       thresholds: { lines: 90, statements: 90, functions: 90, branches: 85 },

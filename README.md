@@ -38,7 +38,10 @@ walk the whole flow anyway.
 - **Designed like a document, not a dashboard.** A "printed test protocol" look from Claude Design: paper,
   ink, hairlines, stamps for verdicts, 3×3 squares for risk scores. Plain CSS variables, WCAG AA contrast,
   visible focus rings, reduced-motion respected. See [docs/design.md](docs/design.md#visual-design).
-- **Tested like a product.** 90 unit tests, Testing Library for the form, Playwright E2E with the
+- **Work survives a reload, secrets never do.** The brief, plan, selection and spec are kept in
+  `sessionStorage` and re-validated with the same schemas as model output on the way back in. The API key
+  and the GitHub token live in memory only. "Start over" wipes the session.
+- **Tested like a product.** 102 unit tests, Testing Library for the form, Playwright E2E with the
   Anthropic Messages API mocked as server-sent events at the network layer so the real SDK does the
   parsing, GitHub REST mocked the same way, axe-core on every step.
 

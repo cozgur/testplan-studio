@@ -5,7 +5,7 @@ import { mockAnthropic } from './support/anthropic-mock.js';
 test.describe('Failure paths are explained to the user', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
-    await page.getByLabel('API key', { exact: true }).fill('sk-ant-test-key');
+    await page.getByLabel('Anthropic API key', { exact: true }).fill('sk-ant-test-key');
     await page.getByRole('radio', { name: /TodoMVC/ }).check();
   });
 

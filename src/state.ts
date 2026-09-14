@@ -11,10 +11,10 @@ import { DEFAULT_MODEL } from './llm/models.js';
 export type Step = 'brief' | 'plan' | 'specs' | 'run';
 
 export const STEPS: { id: Step; label: string; hint: string }[] = [
-  { id: 'brief', label: 'Brief', hint: 'Target, description, risk focus' },
+  { id: 'brief', label: 'Brief', hint: 'Describe the app and choose a risk focus' },
   { id: 'plan', label: 'Plan', hint: 'Risk register and scenarios' },
-  { id: 'specs', label: 'Specs', hint: 'Playwright code and guardrails' },
-  { id: 'run', label: 'Run', hint: 'GitHub Actions dispatch' },
+  { id: 'specs', label: 'Specs', hint: 'Playwright spec and lint verdict' },
+  { id: 'run', label: 'Run', hint: 'Dispatch on GitHub Actions' },
 ];
 
 export type PlanSource = 'sample' | 'generated';
@@ -51,6 +51,7 @@ export type Action =
   | { type: 'toggleScenario'; id: string }
   | { type: 'specReady'; spec: GeneratedSpec }
   | { type: 'fail'; message: string }
+  | { type: 'cancel' }
   | { type: 'dismissError' }
   | { type: 'run'; run: RunState };
 
@@ -135,6 +136,8 @@ export function reducer(state: State, action: Action): State {
       };
     case 'fail':
       return { ...state, busy: null, error: action.message };
+    case 'cancel':
+      return { ...state, busy: null };
     case 'dismissError':
       return { ...state, error: null };
     case 'run':

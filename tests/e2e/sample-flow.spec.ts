@@ -4,7 +4,7 @@ import { SAMPLE_PLAN } from '../../src/fixtures/sample-plan.js';
 test.describe('Explore without an API key', () => {
   test('a visitor walks the sample plan to a runnable spec and a dispatch command', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Plan the tests');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Brief');
     await expect(page.getByRole('button', { name: 'Generate plan' })).toBeDisabled();
 
     await page.getByRole('button', { name: 'Load sample plan' }).click();
@@ -26,7 +26,8 @@ test.describe('Explore without an API key', () => {
 
     await page.getByRole('button', { name: 'Continue to run' }).click();
 
-    await expect(page.getByRole('heading', { name: 'Run on GitHub Actions' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Run', exact: true })).toBeVisible();
+    await expect(page.getByText('target: lab')).toBeVisible();
     await expect(page.getByLabel('GitHub CLI command')).toContainText('run-generated-spec.yml');
     await expect(page.getByLabel('GitHub CLI command')).toContainText('-f target=lab');
     await expect(page.getByRole('button', { name: 'Dispatch workflow' })).toBeDisabled();
@@ -34,7 +35,7 @@ test.describe('Explore without an API key', () => {
 
   test('completed steps stay reachable from the stepper, future steps do not', async ({ page }) => {
     await page.goto('/');
-    const steps = page.getByRole('navigation', { name: 'Workflow steps' });
+    const steps = page.getByRole('navigation', { name: 'Steps' });
     await expect(steps.getByRole('button', { name: /Plan/ })).toBeDisabled();
 
     await page.getByRole('button', { name: 'Load sample plan' }).click();

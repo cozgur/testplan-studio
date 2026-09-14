@@ -12,10 +12,11 @@ describe('BriefForm', () => {
       <BriefForm
         brief={EMPTY_BRIEF}
         hasKey={false}
-        busy={false}
+        busy={null}
         onChange={vi.fn()}
         onGenerate={vi.fn()}
         onLoadSample={onLoadSample}
+        onCancel={vi.fn()}
       />,
     );
 
@@ -30,10 +31,11 @@ describe('BriefForm', () => {
       <BriefForm
         brief={EMPTY_BRIEF}
         hasKey
-        busy={false}
+        busy={null}
         onChange={onChange}
         onGenerate={vi.fn()}
         onLoadSample={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
 
@@ -50,10 +52,11 @@ describe('BriefForm', () => {
       <BriefForm
         brief={EMPTY_BRIEF}
         hasKey
-        busy={false}
+        busy={null}
         onChange={vi.fn()}
         onGenerate={onGenerate}
         onLoadSample={vi.fn()}
+        onCancel={vi.fn()}
       />,
     );
     await userEvent.click(screen.getByRole('button', { name: 'Generate plan' }));

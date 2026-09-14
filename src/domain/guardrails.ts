@@ -137,3 +137,6 @@ export function lintSpec(code: string): LintResult {
   const warnings = findings.length - errors;
   return { findings, errors, warnings, passed: errors === 0 };
 }
+
+/** Every rule id, for documentation and for the verdict panel. */
+export const RULE_IDS: readonly string[] = [...LINE_RULES.map((r) => r.id), ...FILE_RULES.map((r) => r.id)];

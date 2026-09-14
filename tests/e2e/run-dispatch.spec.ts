@@ -10,7 +10,7 @@ test.describe('Dispatching the runner workflow', () => {
     await page.getByRole('button', { name: 'Load sample spec' }).click();
     await page.getByRole('button', { name: 'Continue to run' }).click();
 
-    await page.getByLabel('Fine-grained GitHub token').fill('github_pat_test');
+    await page.getByLabel('Fine-grained token').fill('github_pat_test');
     await page.getByRole('button', { name: 'Dispatch workflow' }).click();
 
     await expect(page.getByTestId('run-status')).toHaveText('completed · success', { timeout: 20_000 });
@@ -33,9 +33,10 @@ test.describe('Dispatching the runner workflow', () => {
     await page.getByRole('button', { name: 'Load sample plan' }).click();
     await page.getByRole('button', { name: 'Load sample spec' }).click();
     await page.getByRole('button', { name: 'Continue to run' }).click();
-    await page.getByLabel('Fine-grained GitHub token').fill('github_pat_test');
+    await page.getByLabel('Fine-grained token').fill('github_pat_test');
     await page.getByRole('button', { name: 'Dispatch workflow' }).click();
 
-    await expect(page.getByTestId('run-status')).toHaveText('failed · failure', { timeout: 20_000 });
+    await expect(page.getByTestId('run-status')).toHaveText('completed · failure', { timeout: 20_000 });
+    await expect(page.getByRole('alert')).toContainText('conclusion "failure"');
   });
 });

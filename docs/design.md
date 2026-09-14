@@ -25,6 +25,16 @@ Responses are constrained to a JSON schema (structured outputs) and then re-vali
 business rules the schema cannot express (unique ids, risk references, score ranges, safe file
 names). The system prompts are request-independent so they can be prompt-cached.
 
+## Visual design
+
+The interface follows a "printed test protocol" direction designed in Claude Design and
+transcribed into plain CSS variables (`src/styles/global.css`): paper ground `#F5F3EC`, ink `#16150F`,
+hairline rules, zero radius, Schibsted Grotesk for UI text and JetBrains Mono for ids, scores,
+code and section labels. State is carried by two accents only: signal red for errors and high risk,
+green for passed and completed. Stamps (rotated, bordered labels) mark provenance and verdicts;
+risk scores are 3×3 filled squares rather than coloured pills. Every control keeps a 2px ink focus
+ring and the only motion is the 2px progress sweep, which `prefers-reduced-motion` turns static.
+
 ## Why a static site
 
 - **Trust boundary is obvious.** The API key and the GitHub token are typed into the page, held in

@@ -8,6 +8,8 @@ export type DemoTarget = {
   name: string;
   url: string;
   description: string;
+  /** One-line mono summary shown on the target card. */
+  short: string;
   /** Runner boots this target locally instead of hitting a public URL. */
   bootsLocally: boolean;
 };
@@ -19,6 +21,7 @@ export const DEMO_TARGETS: readonly DemoTarget[] = [
     url: 'http://127.0.0.1:3000',
     description:
       'A tiny checkout app with a JSON API (health, users, checkout, orders). Booted inside the runner from github.com/cozgur/modern-quality-engineering-lab.',
+    short: 'lab · checkout, orders API, /health',
     bootsLocally: true,
   },
   {
@@ -26,6 +29,7 @@ export const DEMO_TARGETS: readonly DemoTarget[] = [
     name: 'Playwright TodoMVC demo',
     url: 'https://demo.playwright.dev/todomvc',
     description: 'Classic TodoMVC: add, complete, filter and clear todos. Public Playwright demo site.',
+    short: 'todomvc · CRUD list',
     bootsLocally: false,
   },
   {
@@ -33,6 +37,7 @@ export const DEMO_TARGETS: readonly DemoTarget[] = [
     name: 'Sauce Demo',
     url: 'https://www.saucedemo.com',
     description: 'E-commerce practice site with login, inventory, cart and checkout flows.',
+    short: 'saucedemo · login, cart',
     bootsLocally: false,
   },
   {
@@ -40,6 +45,7 @@ export const DEMO_TARGETS: readonly DemoTarget[] = [
     name: 'The Internet (Herokuapp)',
     url: 'https://the-internet.herokuapp.com',
     description: 'A collection of tricky UI patterns: dynamic loading, iframes, drag and drop, auth prompts.',
+    short: 'the-internet · widget zoo',
     bootsLocally: false,
   },
 ];

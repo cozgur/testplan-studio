@@ -9,10 +9,15 @@ import type { StreamFactory } from './planner.js';
  */
 export function createStreamFactory(apiKey: string): StreamFactory {
   const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, maxRetries: 1 });
-  return (params) => client.messages.stream(params);
+  return (params, options) => client.messages.stream(params, { signal: options?.signal });
+}
+
+export function isAbortError(error: unknown): boolean {
+  return error instanceof Anthropic.APIUserAbortError;
 }
 
 export function describeApiError(error: unknown): string {
+  if (error instanceof Anthropic.APIUserAbortError) return 'Generation cancelled.';
   if (error instanceof Anthropic.AuthenticationError)
     return 'The API key was rejected. Check it and try again.';
   if (error instanceof Anthropic.PermissionDeniedError)

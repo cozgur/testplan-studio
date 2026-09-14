@@ -1,9 +1,24 @@
 export const RISK_FOCUS = [
-  { id: 'functional', label: 'Functional journeys', hint: 'Critical paths and their failure modes' },
-  { id: 'api', label: 'API & contracts', hint: 'Status codes, validation, consumer expectations' },
-  { id: 'accessibility', label: 'Accessibility', hint: 'WCAG A/AA, keyboard, live regions' },
-  { id: 'performance', label: 'Performance', hint: 'Latency budgets, load, rendering' },
-  { id: 'security', label: 'Input validation & auth', hint: 'Boundaries, auth flows, data exposure' },
+  {
+    id: 'functional',
+    label: 'Functional journeys',
+    hint: 'Critical paths and their failure modes',
+    tag: 'e2e',
+  },
+  {
+    id: 'api',
+    label: 'API & contracts',
+    hint: 'Status codes, validation, consumer expectations',
+    tag: 'api · contract',
+  },
+  { id: 'accessibility', label: 'Accessibility', hint: 'WCAG A/AA, keyboard, live regions', tag: 'axe' },
+  { id: 'performance', label: 'Performance', hint: 'Latency budgets, load, rendering', tag: 'k6' },
+  {
+    id: 'security',
+    label: 'Input validation & auth',
+    hint: 'Boundaries, auth flows, data exposure',
+    tag: 'negative',
+  },
 ] as const;
 
 export type RiskFocus = (typeof RISK_FOCUS)[number]['id'];

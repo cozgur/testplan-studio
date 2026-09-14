@@ -21,8 +21,8 @@ test.describe('Generate with a key (Anthropic API mocked at the network layer)',
     });
 
     await page.goto('/');
-    await page.getByLabel('API key', { exact: true }).fill('sk-ant-test-key');
-    await page.getByLabel('Model').selectOption('claude-opus-5');
+    await page.getByLabel('Anthropic API key', { exact: true }).fill('sk-ant-test-key');
+    await page.getByLabel('Model', { exact: true }).selectOption('claude-opus-5');
     await page.getByRole('radio', { name: /Modern Quality Engineering Lab/ }).check();
     await page.getByRole('checkbox', { name: 'API & contracts' }).check();
 
@@ -57,7 +57,7 @@ test.describe('Generate with a key (Anthropic API mocked at the network layer)',
   test('a described-only brief with too little text is rejected before any API call', async ({ page }) => {
     const requests = await mockAnthropic(page, () => ({ kind: 'message', text: '{}' }));
     await page.goto('/');
-    await page.getByLabel('API key', { exact: true }).fill('sk-ant-test-key');
+    await page.getByLabel('Anthropic API key', { exact: true }).fill('sk-ant-test-key');
     await page.getByLabel('Description', { exact: true }).fill('too short');
 
     await page.getByRole('button', { name: 'Generate plan' }).click();

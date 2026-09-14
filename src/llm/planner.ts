@@ -17,8 +17,8 @@ import { GeneratedSpecWireSchema, parseGeneratedSpec } from '../domain/spec-sche
 
 /**
  * The narrow slice of the Anthropic SDK this module needs. Production passes
- * `(params) => client.messages.stream(params)`; tests pass a fake. Keeping the
- * seam this small is what makes the orchestration unit-testable without a key.
+ * `(params, options) => client.messages.stream(params, options)`; tests pass a fake.
+ * Keeping the seam this small is what makes the orchestration unit-testable without a key.
  */
 export type StreamHandle = {
   on(event: 'text', listener: (delta: string, snapshot: string) => void): unknown;
@@ -26,11 +26,14 @@ export type StreamHandle = {
   /** Accumulated message so far; the SDK exposes it even when structured-output parsing fails. */
   readonly currentMessage?: Anthropic.Message | undefined;
 };
-export type StreamFactory = (params: Anthropic.MessageStreamParams) => StreamHandle;
+export type StreamOptions = { signal?: AbortSignal };
+export type StreamFactory = (params: Anthropic.MessageStreamParams, options?: StreamOptions) => StreamHandle;
 
 export type GenerationOptions = {
   model: ModelId;
   onProgress?: (characters: number) => void;
+  /** Aborting rejects the promise with the SDK's APIUserAbortError. */
+  signal?: AbortSignal;
 };
 
 export type GenerationErrorKind = 'refusal' | 'truncated' | 'invalid_output';
@@ -57,6 +60,7 @@ export async function generatePlan(
     user: buildPlanPrompt(brief, target),
     format: zodOutputFormat(TestPlanWireSchema),
     onProgress: options.onProgress,
+    signal: options.signal,
   });
   try {
     return parsePlan(text);
@@ -78,6 +82,7 @@ export async function generateSpec(
     user: buildSpecPrompt(plan, scenarios, target, options.feedback),
     format: zodOutputFormat(GeneratedSpecWireSchema),
     onProgress: options.onProgress,
+    signal: options.signal,
   });
   try {
     return parseGeneratedSpec(text);
@@ -94,17 +99,21 @@ type StructuredRequest = {
   user: string;
   format: OutputFormat;
   onProgress?: (characters: number) => void;
+  signal?: AbortSignal;
 };
 
 async function runStructured(stream: StreamFactory, request: StructuredRequest): Promise<string> {
-  const handle = stream({
-    model: request.model,
-    max_tokens: 16000,
-    // Stable system text first with a cache breakpoint; the volatile brief goes in messages.
-    system: [{ type: 'text', text: request.system, cache_control: { type: 'ephemeral' } }],
-    messages: [{ role: 'user', content: request.user }],
-    output_config: { format: request.format },
-  });
+  const handle = stream(
+    {
+      model: request.model,
+      max_tokens: 16000,
+      // Stable system text first with a cache breakpoint; the volatile brief goes in messages.
+      system: [{ type: 'text', text: request.system, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: request.user }],
+      output_config: { format: request.format },
+    },
+    { signal: request.signal },
+  );
 
   handle.on('text', (_delta, snapshot) => request.onProgress?.(snapshot.length));
 
@@ -112,7 +121,7 @@ async function runStructured(stream: StreamFactory, request: StructuredRequest):
   try {
     message = await handle.finalMessage();
   } catch (error) {
-    // Transport and HTTP failures belong to the caller: they carry status codes and typed classes.
+    // Transport and HTTP failures (and user aborts) belong to the caller: typed classes, status codes.
     if (error instanceof Anthropic.APIError) throw error;
     // The SDK parses structured output inside finalMessage(). A refusal (empty text) or a truncated
     // response fails that parse before stop_reason can be inspected, so read the accumulated snapshot.

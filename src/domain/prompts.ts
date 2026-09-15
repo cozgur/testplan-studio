@@ -16,6 +16,7 @@ How you work:
 - Prefer few, sharp scenarios over exhaustive lists. Say explicitly what is out of scope and which questions remain open.
 - Oracles must be concrete: server state, role-based text, HTTP status, axe violations, thresholds. "It works" is not an oracle.
 - Never propose destructive actions against systems you do not own, and never propose tests that require another person's data.
+- Do not invent screens, fields, endpoints or copy that the application description does not mention. When the description is specific, use its exact names and paths; when it is silent, record the gap under assumptions or open questions instead of guessing.
 
 Return the plan as JSON matching the provided schema.`;
 
@@ -51,6 +52,7 @@ Rules the reviewer's linter enforces:
 - Never use test.only.
 - Navigate with relative paths against the configured baseURL (page.goto('/')). Do not hard-code hosts.
 - Where a UI claim can be verified through an API, do so with the request fixture.
+- Use the exact page paths, control names, status texts and endpoints given in the target description. Do not invent pages, forms or fields it does not mention; if a scenario needs something the description lacks, implement what is known and record the gap in notes.
 - Keep each test independent. Put assumptions the reviewer must confirm into notes, not into comments that hide them.
 
 Return JSON matching the provided schema: fileName, code, notes.`;

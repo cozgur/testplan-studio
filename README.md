@@ -107,6 +107,13 @@ docs/          design.md and ADRs
 | [0004](docs/adr/0004-deterministic-guardrails-before-humans.md) | A deterministic lint gates generated code |
 | [0005](docs/adr/0005-structured-output-plus-domain-validation.md) | Structured outputs for shape, domain validation for meaning |
 
+## A real run
+
+Verified end to end on 2026-09-15 against Claude Opus 5 from the live site: the lab brief produced a
+plan with 8 risks and 14 scenarios in about 100 seconds; the 4 browser scenarios became a 674-line spec
+that passed the guardrail lint with no findings, using role-based locators, the `request` fixture and
+no sleeps. The author notes correctly flagged every assumption the model had to make.
+
 ## Known limits
 
 - Model output quality is probabilistic and not asserted in CI. The sample plan is the reference; the

@@ -20,7 +20,7 @@ export const DEMO_TARGETS: readonly DemoTarget[] = [
     name: 'Modern Quality Engineering Lab',
     url: 'http://127.0.0.1:3000',
     description:
-      'A tiny checkout app with a JSON API (health, users, checkout, orders). Booted inside the runner from github.com/cozgur/modern-quality-engineering-lab.',
+      'A single page served at / with the heading "Modern Quality Engineering Lab", one button named "Run demo checkout" and a paragraph with role="status" that reads "No checkout yet." initially. Clicking the button POSTs {"productId":"quality-lab","quantity":1} to /api/checkout and the status becomes "Order confirmed: <orderId>", or "Checkout failed" if the API responds with an error or non-JSON; the button is disabled while the request is in flight and re-enabled afterwards. There is no form, no navigation and no authentication. JSON API: GET /api/health -> {"status":"ok"}; GET /api/users/42 -> {"id":42,"name":"Ada Tester","plan":"pro"} (any other id -> 404 {"error":"user_not_found"}); POST /api/checkout requires productId (non-empty string) and quantity (integer 1-100, default 1) -> 201 {"orderId","status":"confirmed","productId","quantity"}, invalid input -> 400 {"error":"invalid_checkout","reason"}, malformed JSON -> 400 {"error":"invalid_json"}; GET /api/orders/:id -> the stored order or 404 {"error":"order_not_found"}. Orders live in memory; ids look like order-<uuid>. Booted inside the runner from github.com/cozgur/modern-quality-engineering-lab.',
     short: 'lab · checkout, orders API, /health',
     bootsLocally: true,
   },

@@ -81,6 +81,9 @@ export async function generateSpec(
     system: SPEC_SYSTEM_PROMPT,
     user: buildSpecPrompt(plan, scenarios, target, options.feedback),
     format: zodOutputFormat(GeneratedSpecWireSchema),
+    // Writing a spec from an approved plan is mostly transcription; medium effort keeps
+    // the thinking budget (which counts against max_tokens) and the wait proportionate.
+    effort: 'medium',
     onProgress: options.onProgress,
     signal: options.signal,
   });
@@ -93,11 +96,14 @@ export async function generateSpec(
 
 type OutputFormat = NonNullable<NonNullable<Anthropic.MessageStreamParams['output_config']>['format']>;
 
+type Effort = NonNullable<NonNullable<Anthropic.MessageStreamParams['output_config']>['effort']>;
+
 type StructuredRequest = {
   model: ModelId;
   system: string;
   user: string;
   format: OutputFormat;
+  effort?: Effort;
   onProgress?: (characters: number) => void;
   signal?: AbortSignal;
 };
@@ -106,11 +112,15 @@ async function runStructured(stream: StreamFactory, request: StructuredRequest):
   const handle = stream(
     {
       model: request.model,
-      max_tokens: 16000,
+      // Streaming, so the budget can be generous: adaptive thinking tokens count against it,
+      // and a 16k cap truncated real spec generations on Claude Opus 5.
+      max_tokens: 64000,
       // Stable system text first with a cache breakpoint; the volatile brief goes in messages.
       system: [{ type: 'text', text: request.system, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: request.user }],
-      output_config: { format: request.format },
+      output_config: request.effort
+        ? { format: request.format, effort: request.effort }
+        : { format: request.format },
     },
     { signal: request.signal },
   );

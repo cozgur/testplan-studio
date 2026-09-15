@@ -69,7 +69,7 @@ describe('generatePlan', () => {
     expect(calls).toHaveLength(1);
     const params = calls[0];
     expect(params.model).toBe('claude-opus-5');
-    expect(params.max_tokens).toBe(16000);
+    expect(params.max_tokens).toBe(64000);
     expect(params.system).toEqual([
       expect.objectContaining({ type: 'text', cache_control: { type: 'ephemeral' } }),
     ]);
@@ -166,6 +166,7 @@ describe('generateSpec', () => {
     );
 
     expect(spec).toEqual(SAMPLE_SPEC);
+    expect(calls[0].output_config?.effort).toBe('medium');
     const content = String(calls[0].messages[0].content);
     expect(content).toContain('S1 [P0, e2e]');
     expect(content).not.toContain('S2 ');

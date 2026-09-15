@@ -107,12 +107,23 @@ docs/          design.md and ADRs
 | [0004](docs/adr/0004-deterministic-guardrails-before-humans.md) | A deterministic lint gates generated code |
 | [0005](docs/adr/0005-structured-output-plus-domain-validation.md) | Structured outputs for shape, domain validation for meaning |
 
-## A real run
+## Two real runs
 
-Verified end to end on 2026-09-15 against Claude Opus 5 from the live site: the lab brief produced a
-plan with 8 risks and 14 scenarios in about 100 seconds; the 4 browser scenarios became a 674-line spec
-that passed the guardrail lint with no findings, using role-based locators, the `request` fixture and
-no sleeps. The author notes correctly flagged every assumption the model had to make.
+Verified end to end from the live site against Claude Opus 5 on 2026-09-15.
+
+- **Run 1, generic target description.** A plan with 8 risks and 14 scenarios in about 100 s; the spec
+  generation hit the 16k `max_tokens` cap because adaptive thinking counts against it. Fixed by moving to
+  a 64k streamed budget and medium effort for spec writing. The regenerated 674-line spec passed the lint
+  but planned against an imagined checkout form, and the author notes said so.
+- **Run 2, precise target description.** Same brief, now with the lab's page, button, status texts and
+  every endpoint spelled out and both prompts forbidding invented UI. The 14 scenarios matched the real
+  app; the 7 browser scenarios became a 424-line spec that passed the lint with one warning. Run on the
+  lab through the runner workflow: **6 of 7 passed**, and the failure was a genuine defect. Disabling the
+  focused button during the request dropped keyboard focus to `<body>`. The lab was fixed and gained a
+  regression test; the generated spec then passed 7 of 7.
+
+That sequence is the point of the tool: the model proposes, the lint and a reviewer gate, the runner
+proves, and the human keeps the last word on what a failure means.
 
 ## Known limits
 

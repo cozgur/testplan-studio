@@ -1,4 +1,6 @@
+import type { CheckAnnotation, RunFailure } from '../domain/run-failures.js';
 import type { DemoTarget } from '../domain/targets.js';
+import { parseAnnotations } from '../domain/run-failures.js';
 
 /**
  * Runs a generated spec on GitHub Actions through workflow_dispatch. No backend:
@@ -17,6 +19,12 @@ export type DispatchInput = {
   target: DemoTarget['id'];
   specFileName: string;
   specCode: string;
+};
+
+export type WorkflowJob = {
+  id: number;
+  name: string;
+  conclusion: string | null;
 };
 
 export type WorkflowRun = {
@@ -114,6 +122,55 @@ export async function getRun(
   const response = await fetchImpl(`${apiBase(cfg)}/actions/runs/${id}`, { headers: headers(cfg.token) });
   if (!response.ok) throw await toError(response, 'Could not read workflow run');
   return (await response.json()) as WorkflowRun;
+}
+
+/**
+ * Reads the failures of a finished run. Playwright's GitHub reporter writes one
+ * check-run annotation per failing test, which is the only machine-readable failure
+ * detail available to a browser: artifacts are zipped and job logs redirect to a host
+ * that does not allow cross-origin reads.
+ */
+export async function collectRunFailures(
+  cfg: DispatchConfig,
+  runId: number,
+  fetchImpl: FetchLike = fetch,
+): Promise<RunFailure[]> {
+  const jobs = await listRunJobs(cfg, runId, fetchImpl);
+  const failed = jobs.filter((job) => job.conclusion === 'failure');
+  const annotations = await Promise.all(failed.map((job) => listJobAnnotations(cfg, job.id, fetchImpl)));
+  return parseAnnotations(annotations.flat());
+}
+
+export async function listRunJobs(
+  cfg: DispatchConfig,
+  runId: number,
+  fetchImpl: FetchLike = fetch,
+): Promise<WorkflowJob[]> {
+  const response = await fetchImpl(`${apiBase(cfg)}/actions/runs/${runId}/jobs`, {
+    headers: headers(cfg.token),
+  });
+  if (!response.ok) throw await toError(response, 'Could not read the run jobs');
+  const body = (await response.json()) as { jobs?: WorkflowJob[] };
+  return body.jobs ?? [];
+}
+
+/** A workflow job is also a check run, so its id addresses the annotations endpoint. */
+export async function listJobAnnotations(
+  cfg: DispatchConfig,
+  jobId: number,
+  fetchImpl: FetchLike = fetch,
+): Promise<CheckAnnotation[]> {
+  const response = await fetchImpl(`${apiBase(cfg)}/check-runs/${jobId}/annotations`, {
+    headers: headers(cfg.token),
+  });
+  if (response.status === 403) {
+    throw new GitHubError(
+      403,
+      'Could not read the failure details: the token also needs Checks: read permission.',
+    );
+  }
+  if (!response.ok) throw await toError(response, 'Could not read the failure details');
+  return (await response.json()) as CheckAnnotation[];
 }
 
 export type WaitOptions = {

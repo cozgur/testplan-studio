@@ -1,6 +1,7 @@
 import type { Brief } from './brief.js';
 import type { Finding } from './guardrails.js';
 import type { Scenario, TestPlan } from './plan-schema.js';
+import type { RunFailure } from './run-failures.js';
 import type { DemoTarget } from './targets.js';
 import { RISK_FOCUS } from './brief.js';
 
@@ -62,6 +63,7 @@ export function buildSpecPrompt(
   scenarios: Scenario[],
   target: DemoTarget | undefined,
   feedback: Finding[] = [],
+  runFailures: RunFailure[] = [],
 ): string {
   const scenarioText = scenarios
     .map(
@@ -84,6 +86,15 @@ export function buildSpecPrompt(
       ? `The previous attempt failed the linter. Fix every item:\n${feedback
           .map((f) => `- line ${f.line} [${f.rule}]: ${f.message}`)
           .join('\n')}`
+      : '',
+    runFailures.length > 0
+      ? `The previous spec ran against the real application and these tests failed. A reviewer has ` +
+        `examined each one and judged the TEST to be at fault, not the application, so rewrite those ` +
+        `tests to assert the real behaviour correctly. Do not weaken an assertion just to make it pass: ` +
+        `if you conclude the application is actually wrong, keep the assertion and say so in the notes.\n\n` +
+        runFailures
+          .map((failure) => `### ${failure.test} (${failure.file}:${failure.line})\n${failure.message}`)
+          .join('\n\n')
       : '',
   ];
   return sections.filter(Boolean).join('\n\n');

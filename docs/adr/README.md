@@ -7,3 +7,4 @@
 | [0003](0003-github-actions-as-the-runner.md) | GitHub Actions is the test runner, dispatched from the browser |
 | [0004](0004-deterministic-guardrails-before-humans.md) | A deterministic lint gates generated code before a human sees it |
 | [0005](0005-structured-output-plus-domain-validation.md) | Structured outputs for shape, domain validation for meaning |
+| [0006](0006-triage-before-regeneration.md) | A failed run is triaged by a human before anything is regenerated |

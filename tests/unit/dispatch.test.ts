@@ -1,6 +1,8 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { DispatchConfig, WorkflowRun } from '../../src/github/dispatch.js';
+import { SAMPLE_ANNOTATIONS } from '../../src/fixtures/sample-annotations.js';
 import {
+  collectRunFailures,
   dispatchSpecRun,
   encodeSpec,
   findDispatchedRun,
@@ -133,6 +135,62 @@ describe('waitForRun', () => {
     await expect(
       waitForRun(cfg, new Date(), { fetchImpl: fetchMock, sleep, timeoutMs: -1 }),
     ).rejects.toMatchObject({ status: 408 });
+  });
+});
+
+describe('collectRunFailures', () => {
+  const jobsResponse = (jobs: unknown[]) => jsonResponse(200, { jobs });
+
+  test('reads annotations of failed jobs only and parses them into failures', async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url.endsWith('/actions/runs/7/jobs')) {
+        return jobsResponse([
+          { id: 11, name: 'Run spec against lab', conclusion: 'failure' },
+          { id: 12, name: 'Other', conclusion: 'success' },
+        ]);
+      }
+      if (url.endsWith('/check-runs/11/annotations')) return jsonResponse(200, SAMPLE_ANNOTATIONS);
+      throw new Error(`unexpected request: ${url}`);
+    });
+
+    const failures = await collectRunFailures(cfg, 7, fetchMock);
+
+    expect(failures).toHaveLength(1);
+    expect(failures[0].file).toBe('runner/generated/quality-lab-checkout.spec.ts');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      'https://api.github.com/repos/cozgur/testplan-studio/check-runs/11/annotations',
+    );
+  });
+
+  test('returns nothing when no job failed', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jobsResponse([{ id: 11, name: 'ok', conclusion: 'success' }]));
+    await expect(collectRunFailures(cfg, 7, fetchMock)).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('explains the missing token permission when annotations are forbidden', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async (url: string) =>
+        url.endsWith('/jobs')
+          ? jobsResponse([{ id: 11, name: 'Run spec against lab', conclusion: 'failure' }])
+          : jsonResponse(403, { message: 'Resource not accessible by personal access token' }),
+      );
+    await expect(collectRunFailures(cfg, 7, fetchMock)).rejects.toMatchObject({
+      status: 403,
+      message: expect.stringContaining('Checks: read'),
+    });
+  });
+
+  test('surfaces a failure to list the jobs', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(404, { message: 'Not Found' }));
+    await expect(collectRunFailures(cfg, 7, fetchMock)).rejects.toMatchObject({
+      status: 404,
+      message: 'Could not read the run jobs (404): Not Found',
+    });
   });
 });
 

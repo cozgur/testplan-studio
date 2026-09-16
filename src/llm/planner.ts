@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import type { Brief } from '../domain/brief.js';
 import type { Finding } from '../domain/guardrails.js';
+import type { RunFailure } from '../domain/run-failures.js';
 import type { Scenario, TestPlan } from '../domain/plan-schema.js';
 import type { GeneratedSpec } from '../domain/spec-schema.js';
 import type { DemoTarget } from '../domain/targets.js';
@@ -74,12 +75,12 @@ export async function generateSpec(
   plan: TestPlan,
   scenarios: Scenario[],
   target: DemoTarget | undefined,
-  options: GenerationOptions & { feedback?: Finding[] },
+  options: GenerationOptions & { feedback?: Finding[]; runFailures?: RunFailure[] },
 ): Promise<GeneratedSpec> {
   const text = await runStructured(stream, {
     model: options.model,
     system: SPEC_SYSTEM_PROMPT,
-    user: buildSpecPrompt(plan, scenarios, target, options.feedback),
+    user: buildSpecPrompt(plan, scenarios, target, options.feedback, options.runFailures),
     format: zodOutputFormat(GeneratedSpecWireSchema),
     // Writing a spec from an approved plan is mostly transcription; medium effort keeps
     // the thinking budget (which counts against max_tokens) and the wait proportionate.

@@ -1,12 +1,16 @@
 import { useEffect, useReducer, useRef } from 'react';
 import type { Brief } from './domain/brief.js';
+import type { RunFailure } from './domain/run-failures.js';
 import type { DispatchConfig } from './github/dispatch.js';
 import type { Step } from './state.js';
 import { validateBrief } from './domain/brief.js';
+import { failuresToBugReport } from './domain/bug-report.js';
+import { failuresWith } from './domain/run-failures.js';
 import { findTarget } from './domain/targets.js';
+import { downloadText } from './ui/download.js';
 import { SAMPLE_PLAN } from './fixtures/sample-plan.js';
 import { SAMPLE_SPEC } from './fixtures/sample-spec.js';
-import { dispatchSpecRun, GitHubError, waitForRun } from './github/dispatch.js';
+import { collectRunFailures, dispatchSpecRun, GitHubError, waitForRun } from './github/dispatch.js';
 import { clearSession, loadSession, saveSession } from './persistence.js';
 import { initialState, reducer, STEPS } from './state.js';
 import { BriefForm } from './ui/BriefForm.js';
@@ -89,7 +93,9 @@ export function App() {
     });
   };
 
-  const onGenerateSpec = () => {
+  /** Regenerating from the Specs step carries lint feedback; from the Run step it also
+   *  carries the failures a reviewer marked as test defects. */
+  const onGenerateSpec = (runFailures: RunFailure[] = []) => {
     if (!state.plan) return;
     const plan = state.plan;
     const scenarios = plan.scenarios.filter((s) => state.selected.includes(s.id));
@@ -100,10 +106,21 @@ export function App() {
         model: state.model,
         signal,
         feedback,
+        runFailures,
         onProgress: (characters) => dispatch({ type: 'progress', characters }),
       });
       dispatch({ type: 'specReady', spec });
     });
+  };
+
+  const onDownloadBugReport = () => {
+    if (!state.plan) return;
+    const failures = failuresWith(state.run.failures, state.run.triage, 'app');
+    downloadText(
+      'defects.md',
+      failuresToBugReport(state.plan, target, failures, state.run.run?.html_url),
+      'text/markdown;charset=utf-8',
+    );
   };
 
   const onDispatch = async (config: DispatchConfig) => {
@@ -131,10 +148,18 @@ export function App() {
             },
           }),
       });
-      dispatch({
-        type: 'run',
-        run: { status: run.conclusion === 'success' ? 'completed' : 'failed', run, message: null },
-      });
+      const succeeded = run.conclusion === 'success';
+      dispatch({ type: 'run', run: { status: succeeded ? 'completed' : 'failed', run, message: null } });
+      if (succeeded) return;
+
+      // A failed run is only useful if you can see which test failed and why.
+      try {
+        const failures = await collectRunFailures(config, run.id);
+        dispatch({ type: 'run', run: { status: 'failed', run, message: null, failures } });
+      } catch (error) {
+        const message = error instanceof GitHubError ? error.message : (error as Error).message;
+        dispatch({ type: 'run', run: { status: 'failed', run, message } });
+      }
     } catch (error) {
       const message = error instanceof GitHubError ? error.message : (error as Error).message;
       dispatch({ type: 'run', run: { status: 'failed', run: null, message } });
@@ -194,14 +219,24 @@ export function App() {
               lint={state.lint}
               hasKey={hasKey}
               busy={busyFor('spec')}
-              onRegenerate={onGenerateSpec}
+              onRegenerate={() => onGenerateSpec()}
               onCancel={onCancel}
               onContinue={() => dispatch({ type: 'setStep', step: 'run' })}
             />
           )}
 
           {state.step === 'run' && state.spec && (
-            <RunPanel spec={state.spec} target={target} run={state.run} onDispatch={onDispatch} />
+            <RunPanel
+              spec={state.spec}
+              target={target}
+              run={state.run}
+              generating={state.busy !== null}
+              hasKey={hasKey}
+              onDispatch={onDispatch}
+              onTriage={(id, verdict) => dispatch({ type: 'triage', id, verdict })}
+              onRegenerate={() => onGenerateSpec(failuresWith(state.run.failures, state.run.triage, 'test'))}
+              onDownloadBugReport={onDownloadBugReport}
+            />
           )}
         </main>
       </div>

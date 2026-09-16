@@ -50,6 +50,52 @@ describe('studio state', () => {
     expect(reducer(cancelled, { type: 'reset' })).toEqual(initialState);
   });
 
+  test('a run with new failures starts triage from scratch, a repeat keeps the verdicts', () => {
+    const failures = [
+      { id: 'a', test: 'A', file: 'a.spec.ts', line: 1, message: '' },
+      { id: 'b', test: 'B', file: 'a.spec.ts', line: 2, message: '' },
+    ];
+    const failed = reducer(initialState, {
+      type: 'run',
+      run: { status: 'failed', run: null, message: null, failures },
+    });
+    expect(failed.run.failures).toHaveLength(2);
+    expect(failed.run.triage).toEqual({});
+
+    const triaged = reducer(failed, { type: 'triage', id: 'a', verdict: 'app' });
+    expect(triaged.run.triage).toEqual({ a: 'app' });
+
+    const samePayload = reducer(triaged, {
+      type: 'run',
+      run: { status: 'failed', run: null, message: null, failures },
+    });
+    expect(samePayload.run.triage).toEqual({ a: 'app' });
+
+    const differentFailures = reducer(triaged, {
+      type: 'run',
+      run: { status: 'failed', run: null, message: null, failures: [failures[1]] },
+    });
+    expect(differentFailures.run.triage).toEqual({});
+  });
+
+  test('dispatching a new run clears the previous failures', () => {
+    const failed = reducer(initialState, {
+      type: 'run',
+      run: {
+        status: 'failed',
+        run: null,
+        message: null,
+        failures: [{ id: 'a', test: 'A', file: 'a.spec.ts', line: 1, message: '' }],
+      },
+    });
+    const redispatched = reducer(failed, {
+      type: 'run',
+      run: { status: 'dispatching', run: null, message: null },
+    });
+    expect(redispatched.run.failures).toEqual([]);
+    expect(redispatched.run.triage).toEqual({});
+  });
+
   test('toggleScenario adds and removes ids', () => {
     const state = reducer(initialState, { type: 'planReady', plan: SAMPLE_PLAN, source: 'sample' });
     const off = reducer(state, { type: 'toggleScenario', id: 'S1' });

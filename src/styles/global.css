@@ -1167,6 +1167,65 @@ fieldset > legend.field-label {
   color: var(--red);
 }
 
+/* ---- run failure triage ---- */
+.failure {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.failure .head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.failure .name {
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.failure .where {
+  font: 400 12px/18px var(--font-mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.failure .excerpt {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-left: 2px solid var(--red);
+  font: 400 12px/18px var(--font-mono);
+  overflow: auto;
+  max-height: 220px;
+  white-space: pre;
+}
+
+.failure .verdicts {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.failure .verdicts label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.failure .verdicts input {
+  margin: 0;
+  width: 16px;
+  height: 16px;
+}
+
 /* ---- motion ---- */
 @media (prefers-reduced-motion: reduce) {
   * {

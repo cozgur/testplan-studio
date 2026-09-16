@@ -1,6 +1,7 @@
 import type { Brief } from './domain/brief.js';
 import type { LintResult } from './domain/guardrails.js';
 import type { TestPlan } from './domain/plan-schema.js';
+import type { RunFailure, TriageMap, Verdict } from './domain/run-failures.js';
 import type { GeneratedSpec } from './domain/spec-schema.js';
 import type { WorkflowRun } from './github/dispatch.js';
 import type { ModelId } from './llm/models.js';
@@ -23,6 +24,10 @@ export type RunState = {
   status: 'idle' | 'dispatching' | 'waiting' | 'completed' | 'failed';
   run: WorkflowRun | null;
   message: string | null;
+  /** Failing tests of the finished run, empty until one fails. */
+  failures: RunFailure[];
+  /** Human verdict per failure id: is the test wrong, or the application? */
+  triage: TriageMap;
 };
 
 export type State = {
@@ -54,7 +59,8 @@ export type Action =
   | { type: 'cancel' }
   | { type: 'reset' }
   | { type: 'dismissError' }
-  | { type: 'run'; run: RunState };
+  | { type: 'run'; run: Omit<RunState, 'failures' | 'triage'> & Partial<Pick<RunState, 'failures'>> }
+  | { type: 'triage'; id: string; verdict: Verdict };
 
 export const initialState: State = {
   step: 'brief',
@@ -68,7 +74,7 @@ export const initialState: State = {
   lint: null,
   busy: null,
   error: null,
-  run: { status: 'idle', run: null, message: null },
+  run: { status: 'idle', run: null, message: null, failures: [], triage: {} },
 };
 
 /** Browser-layer scenarios the studio can turn into a Playwright spec. */
@@ -143,7 +149,21 @@ export function reducer(state: State, action: Action): State {
       return initialState;
     case 'dismissError':
       return { ...state, error: null };
-    case 'run':
-      return { ...state, run: action.run };
+    case 'run': {
+      const failures = action.run.failures ?? [];
+      // A new dispatch or a new set of failures clears verdicts from the previous run.
+      const sameFailures =
+        failures.length === state.run.failures.length &&
+        failures.every((failure, i) => failure.id === state.run.failures[i]?.id);
+      return {
+        ...state,
+        run: { ...action.run, failures, triage: sameFailures ? state.run.triage : {} },
+      };
+    }
+    case 'triage':
+      return {
+        ...state,
+        run: { ...state.run, triage: { ...state.run.triage, [action.id]: action.verdict } },
+      };
   }
 }

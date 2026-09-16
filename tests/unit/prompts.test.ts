@@ -48,6 +48,35 @@ describe('buildSpecPrompt', () => {
     expect(prompt).not.toContain('failed the linter');
   });
 
+  test('appends triaged run failures and forbids weakening assertions', () => {
+    const prompt = buildSpecPrompt(
+      SAMPLE_PLAN,
+      scenarios,
+      findTarget('lab'),
+      [],
+      [
+        {
+          id: 'a.spec.ts:169',
+          test: 'Checkout journey › S1 order id is shown',
+          file: 'a.spec.ts',
+          line: 169,
+          message: 'Error: expect(locator).toBeFocused() failed',
+        },
+      ],
+    );
+    expect(prompt).toContain('ran against the real application');
+    expect(prompt).toContain('judged the TEST to be at fault');
+    expect(prompt).toContain('Do not weaken an assertion just to make it pass');
+    expect(prompt).toContain('### Checkout journey › S1 order id is shown (a.spec.ts:169)');
+    expect(prompt).toContain('toBeFocused');
+  });
+
+  test('says nothing about a run when there are no failures', () => {
+    expect(buildSpecPrompt(SAMPLE_PLAN, scenarios, findTarget('lab'))).not.toContain(
+      'ran against the real application',
+    );
+  });
+
   test('appends lint feedback when regenerating', () => {
     const prompt = buildSpecPrompt(SAMPLE_PLAN, scenarios, undefined, [
       { rule: 'no-wait-for-timeout', severity: 'error', line: 7, message: 'Fixed sleeps hide timing bugs.' },

@@ -13,11 +13,16 @@ flowchart LR
   S --> L{"Guardrail lint<br/>(deterministic)"}
   L -- errors --> S
   L -- passed --> R["4 · Run<br/>workflow_dispatch → Actions"]
-  R --> A["Playwright report<br/>+ traces (artifact)"]
+  R --> V{"Run result"}
+  V -- green --> D["Done<br/>report + traces"]
+  V -- red --> T["Triage<br/>(human verdict per failure)"]
+  T -- "test is wrong" --> S
+  T -- "app is wrong" --> BR["Bug report<br/>(Markdown)"]
 
   P -. "Claude, structured output" .-> C[("api.anthropic.com")]
   S -. "Claude, structured output" .-> C
   R -. "REST, fine-grained token" .-> G[("api.github.com")]
+  T -. "check-run annotations" .-> G
 ```
 
 Both model calls use the Anthropic TypeScript SDK in the browser with a user-supplied key.
@@ -45,10 +50,32 @@ ring and the only motion is the 2px progress sweep, which `prefers-reduced-motio
 The trade-off is that the browser cannot run Playwright itself. That is what the
 [`run-generated-spec`](../.github/workflows/run-generated-spec.yml) workflow is for.
 
+## Closing the loop: triage, not healing
+
+A red test is ambiguous. Either the test is wrong, or the application is. A tool that
+automatically rewrites the test until it passes will happily erase a real defect, which is the
+failure mode ADR-0004 exists to prevent. So the studio stops and asks.
+
+After a failed run it reads the failing tests from the workflow's check-run annotations, which is
+the only machine-readable failure detail a browser can reach (artifacts are zipped and job logs
+redirect to a host that refuses cross-origin reads). Each failure is shown with its assertion,
+locator and code excerpt, and each needs a verdict:
+
+- **The test is wrong** goes back to the model as regeneration feedback, with an explicit
+  instruction not to weaken an assertion to make it pass and to say so in the notes if it concludes
+  the application is at fault after all.
+- **The application is wrong** goes into a Markdown bug report that carries the originating
+  scenario, its risks, the reproduction steps and what the runner saw.
+
+Nothing can be acted on while a failure is unreviewed. That is the product expressing the same
+position the lab's decision records take: the model proposes, the linter gates, the runner proves,
+and the human decides what a failure means.
+
 ## Security model
 
 | Concern | Control |
 |---|---|
+| Reading run results | The fine-grained token needs Actions: read and write to dispatch, and Checks: read to list failing tests. A missing permission is reported as such rather than swallowed. |
 | Testing sites you do not own | Targets are an allowlist of practice sites plus the lab app. The UI only offers those ids and the workflow rejects anything else. |
 | Arbitrary code execution in Actions | `workflow_dispatch` requires write access to the repository. Fork it to run your own specs. The spec file name is validated with a strict regex; the spec is written only under `runner/generated/`. |
 | Keys and tokens | Never persisted, never sent to a third party, never in the URL. The SDK's browser opt-in is used deliberately because each visitor supplies their own key. |

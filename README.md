@@ -25,11 +25,16 @@ walk the whole flow anyway.
 | 2 · Plan | Read the risk register, tick scenarios | Claude returns a schema-constrained plan; ids, references and scores are re-validated; export Markdown or JSON |
 | 3 · Specs | Review code and author notes | Claude writes a Playwright spec; `lintSpec()` blocks sleeps, CSS paths, non-retrying assertions, `test.only`; regenerate with the findings fed back |
 | 4 · Run | Dispatch or copy a `gh` command | `workflow_dispatch` boots the target, runs the spec, uploads the report and traces |
+| 5 · Triage | Judge each failing test | Failures are read back from the run; test defects go to the model as feedback, application defects become a Markdown bug report |
 
 ## Why it is built this way
 
 - **Risk first, layer second.** The planner prompt insists that a scenario lives at the lowest layer
   that can prove it. Most "E2E" ideas come back as API or unit scenarios, which is the point.
+- **A failing test is not automatically a broken test.** After a failed run the studio shows each
+  failure and asks whether the test or the application is wrong. Only the ones you call test defects
+  are fed back for regeneration, with an instruction never to weaken an assertion to make it pass;
+  the rest become a bug report. See [ADR-0006](docs/adr/0006-triage-before-regeneration.md).
 - **The model proposes, a linter decides.** Generated code that would flake never reaches a reviewer.
   Every rule is unit-tested. See [ADR-0004](docs/adr/0004-deterministic-guardrails-before-humans.md).
 - **Structured outputs plus domain validation.** Shape is enforced by the API; meaning is enforced by
@@ -67,8 +72,8 @@ To generate for real, paste an Anthropic API key in the Brief step. It is sent o
 ## Run a generated spec on Actions
 
 Dispatching needs write access to the repository, so fork it first. Then either paste a
-fine-grained token (Actions: read and write) into the Run step, or use the command the studio
-prints:
+fine-grained token (Actions: read and write, plus Checks: read so failures can be read back) into
+the Run step, or use the command the studio prints:
 
 ```bash
 gh workflow run run-generated-spec.yml --repo <you>/testplan-studio --ref main \
@@ -106,6 +111,7 @@ docs/          design.md and ADRs
 | [0003](docs/adr/0003-github-actions-as-the-runner.md) | GitHub Actions is the runner |
 | [0004](docs/adr/0004-deterministic-guardrails-before-humans.md) | A deterministic lint gates generated code |
 | [0005](docs/adr/0005-structured-output-plus-domain-validation.md) | Structured outputs for shape, domain validation for meaning |
+| [0006](docs/adr/0006-triage-before-regeneration.md) | A failed run is triaged by a human before anything is regenerated |
 
 ## Two real runs
 

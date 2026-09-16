@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import type { RunFailure, Verdict } from '../domain/run-failures.js';
 import type { GeneratedSpec } from '../domain/spec-schema.js';
 import type { DemoTarget } from '../domain/targets.js';
 import type { DispatchConfig } from '../github/dispatch.js';
 import type { RunState } from '../state.js';
+import { countVerdicts } from '../domain/run-failures.js';
 import { DEFAULT_DISPATCH, ghCliCommand } from '../github/dispatch.js';
 import { CodeBlock } from './CodeBlock.js';
 import { Alert } from './Feedback.js';
@@ -11,14 +13,29 @@ type Props = {
   spec: GeneratedSpec;
   target: DemoTarget | undefined;
   run: RunState;
+  generating: boolean;
+  hasKey: boolean;
   onDispatch: (config: DispatchConfig) => void;
+  onTriage: (id: string, verdict: Verdict) => void;
+  onRegenerate: () => void;
+  onDownloadBugReport: () => void;
 };
 
-export function RunPanel({ spec, target, run, onDispatch }: Props) {
+export function RunPanel({
+  spec,
+  target,
+  run,
+  generating,
+  hasKey,
+  onDispatch,
+  onTriage,
+  onRegenerate,
+  onDownloadBugReport,
+}: Props) {
   const [owner, setOwner] = useState(DEFAULT_DISPATCH.owner);
   const [repo, setRepo] = useState(DEFAULT_DISPATCH.repo);
   const [token, setToken] = useState('');
-  const busy = run.status === 'dispatching' || run.status === 'waiting';
+  const dispatching = run.status === 'dispatching' || run.status === 'waiting';
 
   if (!target) {
     return (
@@ -107,12 +124,13 @@ export function RunPanel({ spec, target, run, onDispatch }: Props) {
             aria-describedby="token-hint"
           />
           <span id="token-hint" className="hint">
-            Needs Actions: read and write on this repository only. Sent only to api.github.com.
+            Needs Actions: read and write, plus Checks: read so the studio can show which tests failed. Sent
+            only to api.github.com.
           </span>
         </div>
         <div className="row-8">
-          <button type="submit" className="btn btn-primary" disabled={busy || token.trim() === ''}>
-            {busy ? 'Running…' : 'Dispatch workflow'}
+          <button type="submit" className="btn btn-primary" disabled={dispatching || token.trim() === ''}>
+            {dispatching ? 'Running…' : 'Dispatch workflow'}
           </button>
         </div>
       </form>
@@ -124,9 +142,21 @@ export function RunPanel({ spec, target, run, onDispatch }: Props) {
         <StatusRows run={run} />
       </section>
 
+      {run.failures.length > 0 && (
+        <Triage
+          failures={run.failures}
+          triage={run.triage}
+          generating={generating}
+          hasKey={hasKey}
+          onTriage={onTriage}
+          onRegenerate={onRegenerate}
+          onDownloadBugReport={onDownloadBugReport}
+        />
+      )}
+
       <section className="section tight" aria-labelledby="s-cli">
         <div className="section-label" id="s-cli">
-          4.3 · Equivalent gh CLI
+          {run.failures.length > 0 ? '4.4' : '4.3'} · Equivalent gh CLI
         </div>
         <p className="hint mt-8" style={{ marginBottom: 8 }}>
           Download the spec first so the file exists next to your shell.
@@ -134,6 +164,106 @@ export function RunPanel({ spec, target, run, onDispatch }: Props) {
         <CodeBlock name="shell" code={command} ariaLabel="GitHub CLI command" />
       </section>
     </>
+  );
+}
+
+type TriageProps = {
+  failures: RunFailure[];
+  triage: Record<string, Verdict>;
+  generating: boolean;
+  hasKey: boolean;
+  onTriage: (id: string, verdict: Verdict) => void;
+  onRegenerate: () => void;
+  onDownloadBugReport: () => void;
+};
+
+/**
+ * A red test is ambiguous: either the test is wrong or the application is. The tool
+ * refuses to guess. Only failures a human marks as test defects are fed back to the
+ * model; the rest become a bug report.
+ */
+function Triage({
+  failures,
+  triage,
+  generating,
+  hasKey,
+  onTriage,
+  onRegenerate,
+  onDownloadBugReport,
+}: TriageProps) {
+  const counts = countVerdicts(failures, triage);
+  return (
+    <section className="section tight" aria-labelledby="s-triage">
+      <div className="section-label-row">
+        <div className="section-label no-rule" id="s-triage">
+          4.3 · Triage · {failures.length} failing {failures.length === 1 ? 'test' : 'tests'}
+        </div>
+        <span className="note">a failing test is not automatically a broken test</span>
+      </div>
+      <div className="rows">
+        {failures.map((failure) => {
+          const verdict = triage[failure.id] ?? 'unreviewed';
+          return (
+            <div className="failure" key={failure.id}>
+              <div className="head">
+                <span className="name">{failure.test}</span>
+                <span className="where">
+                  {failure.file}:{failure.line}
+                </span>
+              </div>
+              <pre className="excerpt" tabIndex={0} aria-label={`Failure output for ${failure.test}`}>
+                {failure.message}
+              </pre>
+              <fieldset className="verdicts">
+                <legend className="sr-only">Verdict for {failure.test}</legend>
+                <label>
+                  <input
+                    type="radio"
+                    name={`verdict-${failure.id}`}
+                    checked={verdict === 'test'}
+                    onChange={() => onTriage(failure.id, 'test')}
+                  />
+                  The test is wrong
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name={`verdict-${failure.id}`}
+                    checked={verdict === 'app'}
+                    onChange={() => onTriage(failure.id, 'app')}
+                  />
+                  The application is wrong
+                </label>
+              </fieldset>
+            </div>
+          );
+        })}
+      </div>
+      <div className="actions">
+        <div className="row">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={onRegenerate}
+            disabled={generating || !hasKey || counts.test === 0}
+          >
+            {generating
+              ? 'Regenerating…'
+              : `Regenerate spec with ${counts.test} test ${counts.test === 1 ? 'fix' : 'fixes'}`}
+          </button>
+          <button type="button" className="btn" onClick={onDownloadBugReport} disabled={counts.app === 0}>
+            Download bug report ({counts.app})
+          </button>
+          <span className="hint">
+            {counts.unreviewed > 0
+              ? `${counts.unreviewed} still unreviewed. Decide each one before acting on it.`
+              : !hasKey && counts.test > 0
+                ? 'Add an API key in the Brief step to regenerate.'
+                : 'Test defects go back to the model; application defects go to the developer.'}
+          </span>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -208,7 +338,7 @@ function StatusRows({ run }: { run: RunState }) {
         <div className="mt-16">
           <Alert label="Run failed">
             {run.run
-              ? `The workflow finished with conclusion "${run.run.conclusion}". Open the run for the Playwright report and traces.`
+              ? `The workflow finished with conclusion "${run.run.conclusion}". ${run.message ?? 'Open the run for the Playwright report and traces.'}`
               : (run.message ?? 'The dispatch did not go through.')}
           </Alert>
         </div>

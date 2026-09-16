@@ -12,7 +12,7 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/domain/**', 'src/github/**', 'src/llm/**', 'src/persistence.ts'],
       exclude: ['src/llm/anthropic-client.ts'],
-      reporter: ['text', 'lcov'],
+      reporter: ['text', 'lcov', 'json-summary'],
       thresholds: { lines: 90, statements: 90, functions: 90, branches: 85 },
     },
   },

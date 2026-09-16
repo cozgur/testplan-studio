@@ -25,6 +25,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - name: Measure what the page will claim
+        run: |
+          npm run test:coverage
+          echo "E2E_TESTS=$(npx playwright test --list 2>/dev/null | awk '/^Total: /{print $2}')" >> "$GITHUB_ENV"
       # With a custom domain the site is served from the root; without one it lives
       # under /<repo>/ on github.io. PAGES_CUSTOM_DOMAIN is a repository variable, so
       # the switch happens without a code change once DNS is in place.
@@ -32,6 +36,8 @@ jobs:
         env:
           VITE_BASE_PATH: ${{ vars.PAGES_CUSTOM_DOMAIN != '' && '/' || format('/{0}/', github.event.repository.name) }}
         run: npm run build
+      - name: Publish the measured facts
+        run: node scripts/facts.mjs dist
       - name: Write CNAME for the custom domain
         if: vars.PAGES_CUSTOM_DOMAIN != ''
         run: echo "${{ vars.PAGES_CUSTOM_DOMAIN }}" > dist/CNAME
